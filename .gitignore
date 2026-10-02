@@ -1,0 +1,15 @@
+node_modules/
+.next/
+out/
+.sites-runtime/
+.env*
+!.env.example
+
+# Fuentes privadas: conservan nombres originales y pueden incluir EXIF.
+data/raw/
+data/referencias.csv
+data/*_privado.*
+
+# Sistema y logs
+.DS_Store
+*.log
