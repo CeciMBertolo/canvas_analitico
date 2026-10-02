@@ -8,7 +8,7 @@ import {
 } from "./core";
 
 type Args = { input: string; metadata: string; output: string; publicDir: string };
-type Trace = { source: string; stem: string; id: string; category: string; image: string };
+type Trace = { source: string; stem: string; id: string; category: string; image: string; thumbnail: string };
 type Row = Record<string, string>;
 
 function args(): Args {
@@ -75,9 +75,12 @@ async function run() {
       throw new Error(`Categoría no reconocida para ${file}`);
     }
     const output = path.join(config.publicDir, category, `${id}.webp`);
+    const thumbnailOutput = path.join(config.publicDir, "thumbs", category, `${id}.webp`);
     await mkdir(path.dirname(output), { recursive: true });
+    await mkdir(path.dirname(thumbnailOutput), { recursive: true });
     const image = sharp(source, { failOn: "warning" }).rotate().resize(900, 900, { fit: "fill" });
     await image.clone().webp({ quality: 82, effort: 5 }).toFile(output);
+    await image.clone().resize(128, 128, { fit: "fill" }).webp({ quality: 70, effort: 4 }).toFile(thumbnailOutput);
     const { data } = await image.clone().resize(512, 512, { fit: "fill" }).removeAlpha().raw().toBuffer({ resolveWithObject: true });
     metrics.set(id, calculateMetrics(data));
     traces.push({
@@ -86,6 +89,7 @@ async function run() {
       id,
       category,
       image: `/corpus/${category}/${id}.webp`,
+      thumbnail: `/corpus/thumbs/${category}/${id}.webp`,
     });
     if ((index + 1) % 25 === 0 || index + 1 === files.length) console.log(`  ${index + 1}/${files.length}`);
   }
@@ -111,6 +115,7 @@ async function run() {
       caso_limite: normalizeBoolean(row.caso_limite),
       justificacion_etiqueta: row.justificacion_etiqueta.trim(),
       imagen: match.image,
+      miniatura: match.thumbnail,
       ...metrics.get(match.id),
     }];
   });

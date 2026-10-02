@@ -55,8 +55,8 @@ function Scatter({ data, xMetric, yMetric, mode, thumbnailSize, separateOverlaps
   separateOverlaps: boolean;
   onSelect: (photo: Photo) => void;
 }) {
-  const width = 900, height = 520;
-  const pad = { left: 70, right: 28, top: 30, bottom: 60 };
+  const width = 1200, height = 480;
+  const pad = { left: 72, right: 28, top: 24, bottom: 56 };
   const valuesX = data.map((photo) => photo[xMetric]);
   const valuesY = data.map((photo) => photo[yMetric]);
   const minX = Math.min(...valuesX), maxX = Math.max(...valuesX);
@@ -112,7 +112,7 @@ function Scatter({ data, xMetric, yMetric, mode, thumbnailSize, separateOverlaps
             onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") onSelect(photo); }}
           >
             <title>{CATEGORY[photo.tipo_manovich].label} · {formatValue(xMetric, photo[xMetric])} / {formatValue(yMetric, photo[yMetric])}</title>
-            <image href={photo.imagen} x={x - thumbnailSize / 2} y={y - thumbnailSize / 2} width={thumbnailSize} height={thumbnailSize} preserveAspectRatio="xMidYMid slice" />
+            <image href={photo.miniatura || photo.imagen} x={x - thumbnailSize / 2} y={y - thumbnailSize / 2} width={thumbnailSize} height={thumbnailSize} preserveAspectRatio="xMidYMid slice" />
             <rect x={x - thumbnailSize / 2} y={y - thumbnailSize / 2} width={thumbnailSize} height={thumbnailSize} fill="none" />
           </g>
         ) : (
@@ -229,7 +229,7 @@ export default function Home() {
       </header>
 
       <section className="intro" id="top">
-        <div><p className="kicker">Analítica cultural · Lev Manovich</p><h1>Mirar las imágenes<br />también es <em>medirlas.</em></h1></div>
+        <div><p className="kicker">Analítica cultural · Lev Manovich</p><h1>Mirar las imágenes también es <em>medirlas.</em></h1></div>
         <p className="intro-copy">Explorá cómo la luz, el color y el contraste se distribuyen entre fotografías casuales, profesionales y de diseño.</p>
       </section>
 

@@ -19,4 +19,5 @@ export type Photo = {
   caso_limite: boolean;
   justificacion_etiqueta: string;
   imagen: string;
+  miniatura: string;
 } & Record<Metric, number>;
