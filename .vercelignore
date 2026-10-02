@@ -1,0 +1,8 @@
+# Solo se despliega la aplicación y el corpus público anonimizado.
+data/
+node_modules/
+.next/
+out/
+.git/
+.env*
+*.log

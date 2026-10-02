@@ -13,3 +13,5 @@ data/*_privado.*
 # Sistema y logs
 .DS_Store
 *.log
+
+.vercel
