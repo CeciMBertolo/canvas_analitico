@@ -14,7 +14,7 @@ Explorador web de un corpus de 207 fotografías clasificadas como **casuales**, 
 
 La aplicación incluye tres vistas conectadas por los mismos filtros:
 
-- **Plano:** cruza dos variables visuales en un gráfico interactivo.
+- **Plano:** cruza dos variables visuales y alterna entre ImagePlot con miniaturas ajustables y una vista de burbujas.
 - **Distribuciones:** compara cómo se reparte una variable entre las tres categorías.
 - **Grilla:** recorre el corpus visualmente y abre la ficha analítica de cada fotografía.
 

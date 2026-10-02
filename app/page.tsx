@@ -20,6 +20,7 @@ const LABELS: Record<Metric, string> = {
 };
 
 type View = "plano" | "distribucion" | "grilla";
+type PlotMode = "imagenes" | "burbujas";
 
 function formatValue(metric: Metric, value: number) {
   return metric === "matiz_dominante_deg" ? `${value.toFixed(1)}°` : value.toFixed(3);
@@ -45,8 +46,14 @@ function EmptyState() {
   );
 }
 
-function Scatter({ data, xMetric, yMetric, onSelect }: {
-  data: Photo[]; xMetric: Metric; yMetric: Metric; onSelect: (photo: Photo) => void;
+function Scatter({ data, xMetric, yMetric, mode, thumbnailSize, separateOverlaps, onSelect }: {
+  data: Photo[];
+  xMetric: Metric;
+  yMetric: Metric;
+  mode: PlotMode;
+  thumbnailSize: number;
+  separateOverlaps: boolean;
+  onSelect: (photo: Photo) => void;
 }) {
   const width = 900, height = 520;
   const pad = { left: 70, right: 28, top: 30, bottom: 60 };
@@ -54,9 +61,27 @@ function Scatter({ data, xMetric, yMetric, onSelect }: {
   const valuesY = data.map((photo) => photo[yMetric]);
   const minX = Math.min(...valuesX), maxX = Math.max(...valuesX);
   const minY = Math.min(...valuesY), maxY = Math.max(...valuesY);
-  const sx = (value: number) => pad.left + ((value - minX) / (maxX - minX || 1)) * (width - pad.left - pad.right);
-  const sy = (value: number) => height - pad.bottom - ((value - minY) / (maxY - minY || 1)) * (height - pad.top - pad.bottom);
+  const markRadius = mode === "imagenes" ? thumbnailSize / 2 : 9;
+  const sx = (value: number) => pad.left + markRadius + ((value - minX) / (maxX - minX || 1)) * (width - pad.left - pad.right - markRadius * 2);
+  const sy = (value: number) => height - pad.bottom - markRadius - ((value - minY) / (maxY - minY || 1)) * (height - pad.top - pad.bottom - markRadius * 2);
   const ticks = Array.from({ length: 5 }, (_, i) => i / 4);
+  const groups = new Map<string, Photo[]>();
+  data.forEach((photo) => {
+    const key = `${photo[xMetric].toFixed(6)}:${photo[yMetric].toFixed(6)}`;
+    groups.set(key, [...(groups.get(key) ?? []), photo]);
+  });
+  const positions = data.map((photo) => {
+    const key = `${photo[xMetric].toFixed(6)}:${photo[yMetric].toFixed(6)}`;
+    const group = groups.get(key) ?? [photo];
+    const index = group.indexOf(photo);
+    const spread = separateOverlaps && group.length > 1 ? Math.min(thumbnailSize * 0.6, 30) : 0;
+    const angle = (index / group.length) * Math.PI * 2;
+    return {
+      photo,
+      x: sx(photo[xMetric]) + Math.cos(angle) * spread,
+      y: sy(photo[yMetric]) + Math.sin(angle) * spread,
+    };
+  });
 
   return (
     <div className="chart-wrap">
@@ -76,12 +101,26 @@ function Scatter({ data, xMetric, yMetric, onSelect }: {
         ))}
         <text className="axis-label" x={(width + pad.left - pad.right) / 2} y={height - 8} textAnchor="middle">{LABELS[xMetric]}</text>
         <text className="axis-label" transform={`translate(17 ${(height + pad.top - pad.bottom) / 2}) rotate(-90)`} textAnchor="middle">{LABELS[yMetric]}</text>
-        {data.map((photo) => (
+        {positions.map(({ photo, x, y }) => mode === "imagenes" ? (
+          <g
+            key={`${photo.id_imagen}-${photo.autor_id}`}
+            className="image-point"
+            onClick={() => onSelect(photo)}
+            tabIndex={0}
+            role="button"
+            aria-label={`Abrir foto ${photo.id_imagen}`}
+            onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") onSelect(photo); }}
+          >
+            <title>{CATEGORY[photo.tipo_manovich].label} · {formatValue(xMetric, photo[xMetric])} / {formatValue(yMetric, photo[yMetric])}</title>
+            <image href={photo.imagen} x={x - thumbnailSize / 2} y={y - thumbnailSize / 2} width={thumbnailSize} height={thumbnailSize} preserveAspectRatio="xMidYMid slice" />
+            <rect x={x - thumbnailSize / 2} y={y - thumbnailSize / 2} width={thumbnailSize} height={thumbnailSize} fill="none" />
+          </g>
+        ) : (
           <circle
             key={`${photo.id_imagen}-${photo.autor_id}`}
             className="point"
-            cx={sx(photo[xMetric])}
-            cy={sy(photo[yMetric])}
+            cx={x}
+            cy={y}
             r="7"
             fill={CATEGORY[photo.tipo_manovich].color}
             onClick={() => onSelect(photo)}
@@ -154,8 +193,11 @@ export default function Home() {
   const [confidence, setConfidence] = useState("todas");
   const [onlyLimits, setOnlyLimits] = useState(false);
   const [xMetric, setXMetric] = useState<Metric>("mediana_luminancia");
-  const [yMetric, setYMetric] = useState<Metric>("saturacion_media");
+  const [yMetric, setYMetric] = useState<Metric>("dispersion_luminancia");
   const [histMetric, setHistMetric] = useState<Metric>("dispersion_luminancia");
+  const [plotMode, setPlotMode] = useState<PlotMode>("imagenes");
+  const [thumbnailSize, setThumbnailSize] = useState(52);
+  const [separateOverlaps, setSeparateOverlaps] = useState(true);
   const [selected, setSelected] = useState<Photo | null>(null);
 
   useEffect(() => {
@@ -210,7 +252,18 @@ export default function Home() {
           {loading && <div className="loading"><span />Preparando el corpus…</div>}
           {error && <div className="empty"><span>Error de carga</span><p>{error}</p></div>}
           {!loading && !error && filtered.length === 0 && <EmptyState />}
-          {!loading && filtered.length > 0 && view === "plano" && <Scatter data={filtered} xMetric={xMetric} yMetric={yMetric} onSelect={setSelected} />}
+          {!loading && filtered.length > 0 && view === "plano" && <>
+            <div className="plot-controls">
+              <div className="mode-control" role="group" aria-label="Representación del plano">
+                <span>Modo</span>
+                <button aria-pressed={plotMode === "imagenes"} onClick={() => setPlotMode("imagenes")}>Miniaturas</button>
+                <button aria-pressed={plotMode === "burbujas"} onClick={() => setPlotMode("burbujas")}>Burbujas</button>
+              </div>
+              <label className="overlap-control"><input type="checkbox" checked={separateOverlaps} onChange={(event) => setSeparateOverlaps(event.target.checked)} />Separar fotografías superpuestas</label>
+              <label className={`size-control ${plotMode === "burbujas" ? "disabled" : ""}`}><span>Tamaño de miniatura <b>{thumbnailSize}px</b></span><input type="range" min="28" max="84" step="4" value={thumbnailSize} disabled={plotMode === "burbujas"} onChange={(event) => setThumbnailSize(Number(event.target.value))} /></label>
+            </div>
+            <Scatter data={filtered} xMetric={xMetric} yMetric={yMetric} mode={plotMode} thumbnailSize={thumbnailSize} separateOverlaps={separateOverlaps} onSelect={setSelected} />
+          </>}
           {!loading && filtered.length > 0 && view === "distribucion" && <><Histogram data={filtered} metric={histMetric} /><div className="legend">{(Object.keys(CATEGORY) as Category[]).map((category) => <span key={category}><i style={{ background: CATEGORY[category].color }} />{CATEGORY[category].label}</span>)}</div></>}
           {!loading && filtered.length > 0 && view === "grilla" && <div className="gallery">{[...filtered].sort((a, b) => a[xMetric] - b[xMetric]).map((photo) => <button key={`${photo.id_imagen}-${photo.autor_id}`} onClick={() => setSelected(photo)}><img src={photo.imagen} alt="" loading="lazy" /><span style={{ background: CATEGORY[photo.tipo_manovich].color }}>{CATEGORY[photo.tipo_manovich].label}</span></button>)}</div>}
           <div className="viz-foot"><span>Seleccioná un punto o una imagen para ver su ficha.</span><span>Datos cargados automáticamente</span></div>
