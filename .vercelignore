@@ -1,5 +1,5 @@
 # Solo se despliega la aplicación y el corpus público anonimizado.
-data/
+/data/
 node_modules/
 .next/
 out/
