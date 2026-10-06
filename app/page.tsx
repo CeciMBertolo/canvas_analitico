@@ -46,13 +46,12 @@ function EmptyState() {
   );
 }
 
-function Scatter({ data, xMetric, yMetric, mode, thumbnailSize, separateOverlaps, onSelect }: {
+function Scatter({ data, xMetric, yMetric, mode, thumbnailSize, onSelect }: {
   data: Photo[];
   xMetric: Metric;
   yMetric: Metric;
   mode: PlotMode;
   thumbnailSize: number;
-  separateOverlaps: boolean;
   onSelect: (photo: Photo) => void;
 }) {
   const width = 1200, height = 480;
@@ -74,7 +73,7 @@ function Scatter({ data, xMetric, yMetric, mode, thumbnailSize, separateOverlaps
     const key = `${photo[xMetric].toFixed(6)}:${photo[yMetric].toFixed(6)}`;
     const group = groups.get(key) ?? [photo];
     const index = group.indexOf(photo);
-    const spread = separateOverlaps && group.length > 1 ? Math.min(thumbnailSize * 0.6, 30) : 0;
+    const spread = group.length > 1 ? Math.min(thumbnailSize * 0.6, 30) : 0;
     const angle = (index / group.length) * Math.PI * 2;
     return {
       photo,
@@ -197,7 +196,6 @@ export default function Home() {
   const [histMetric, setHistMetric] = useState<Metric>("dispersion_luminancia");
   const [plotMode, setPlotMode] = useState<PlotMode>("imagenes");
   const [thumbnailSize, setThumbnailSize] = useState(52);
-  const [separateOverlaps, setSeparateOverlaps] = useState(true);
   const [selected, setSelected] = useState<Photo | null>(null);
 
   useEffect(() => {
@@ -259,10 +257,9 @@ export default function Home() {
                 <button aria-pressed={plotMode === "imagenes"} onClick={() => setPlotMode("imagenes")}>Miniaturas</button>
                 <button aria-pressed={plotMode === "burbujas"} onClick={() => setPlotMode("burbujas")}>Burbujas</button>
               </div>
-              <label className="overlap-control"><input type="checkbox" checked={separateOverlaps} onChange={(event) => setSeparateOverlaps(event.target.checked)} />Separar fotografías superpuestas</label>
               <label className={`size-control ${plotMode === "burbujas" ? "disabled" : ""}`}><span>Tamaño de miniatura <b>{thumbnailSize}px</b></span><input type="range" min="28" max="84" step="4" value={thumbnailSize} disabled={plotMode === "burbujas"} onChange={(event) => setThumbnailSize(Number(event.target.value))} /></label>
             </div>
-            <Scatter data={filtered} xMetric={xMetric} yMetric={yMetric} mode={plotMode} thumbnailSize={thumbnailSize} separateOverlaps={separateOverlaps} onSelect={setSelected} />
+            <Scatter data={filtered} xMetric={xMetric} yMetric={yMetric} mode={plotMode} thumbnailSize={thumbnailSize} onSelect={setSelected} />
           </>}
           {!loading && filtered.length > 0 && view === "distribucion" && <><Histogram data={filtered} metric={histMetric} /><div className="legend">{(Object.keys(CATEGORY) as Category[]).map((category) => <span key={category}><i style={{ background: CATEGORY[category].color }} />{CATEGORY[category].label}</span>)}</div></>}
           {!loading && filtered.length > 0 && view === "grilla" && <div className="gallery">{[...filtered].sort((a, b) => a[xMetric] - b[xMetric]).map((photo) => <button key={`${photo.id_imagen}-${photo.autor_id}`} onClick={() => setSelected(photo)}><img src={photo.imagen} alt="" loading="lazy" /><span style={{ background: CATEGORY[photo.tipo_manovich].color }}>{CATEGORY[photo.tipo_manovich].label}</span></button>)}</div>}
